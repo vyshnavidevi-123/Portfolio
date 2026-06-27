@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vyshnavi Devi Vaddi — Software Engineer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#020203;
+    --panel:#0A0B0D;
+    --line:#26282C;
+    --line-bright:#3C3F45;
+    --text:#F4F4F2;
+    --muted:#7C7F87;
+    --red:#FF3B30;
+    --cyan:#39E0FF;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    cursor:none;
+  }
+  ::selection{ background:var(--red); color:#fff; }
+  a{ color:inherit; text-decoration:none; }
+  button{ font-family:inherit; cursor:none; background:none; border:none; color:inherit; }
+
+  @media (hover:none){ body, button{ cursor:auto; } }
+
+  /* ---------- custom crosshair cursor ---------- */
+  #crosshair{
+    position:fixed; top:0; left:0; width:22px; height:22px; pointer-events:none; z-index:9999;
+    transform:translate(-50%,-50%); will-change:transform;
+    mix-blend-mode:difference;
+  }
+  #crosshair::before, #crosshair::after{
+    content:''; position:absolute; background:#fff;
+  }
+  #crosshair::before{ width:100%; height:1px; top:50%; left:0; }
+  #crosshair::after{ width:1px; height:100%; top:0; left:50%; }
+  #crosshair .ring{
+    position:absolute; inset:0; border:1px solid #fff; border-radius:50%;
+    transform:scale(1); transition:transform .2s ease, opacity .2s ease;
+    opacity:0.6;
+  }
+  #crosshair.active .ring{ transform:scale(1.7); opacity:1; }
+  @media (hover:none){ #crosshair{ display:none; } }
+
+  /* ---------- HUD frame (persistent bracket corners) ---------- */
+  .hud-frame{ position:fixed; inset:18px; z-index:40; pointer-events:none; }
+  .hud-corner{ position:absolute; width:26px; height:26px; }
+  .hud-corner.tl{ top:0; left:0; border-top:1px solid var(--line-bright); border-left:1px solid var(--line-bright); }
+  .hud-corner.tr{ top:0; right:0; border-top:1px solid var(--line-bright); border-right:1px solid var(--line-bright); }
+  .hud-corner.bl{ bottom:0; left:0; border-bottom:1px solid var(--line-bright); border-left:1px solid var(--line-bright); }
+  .hud-corner.br{ bottom:0; right:0; border-bottom:1px solid var(--line-bright); border-right:1px solid var(--line-bright); }
+
+  /* ---------- top telemetry bar ---------- */
+  .telemetry{
+    position:fixed; top:18px; left:50%; transform:translateX(-50%); z-index:45;
+    font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--muted);
+    letter-spacing:0.06em; display:flex; gap:18px; pointer-events:none;
+  }
+  .telemetry span b{ color:var(--cyan); font-weight:500; }
+  .telemetry .dot{ width:5px; height:5px; border-radius:50%; background:var(--red); display:inline-block; margin-right:5px; animation:blink 1.6s ease-in-out infinite; }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+  @media (max-width:780px){ .telemetry{ display:none; } }
+
+  /* ---------- scanline ambient ---------- */
+  .scanline{ position:fixed; inset:0; z-index:30; pointer-events:none; opacity:0.4; }
+  .scanline::before{
+    content:''; position:absolute; left:0; right:0; height:120px;
+    background:linear-gradient(180deg, transparent, rgba(57,224,255,0.04), transparent);
+    animation:scanMove 7s linear infinite;
+  }
+  @keyframes scanMove{ 0%{ top:-120px; } 100%{ top:100vh; } }
+
+  .grid-bg{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:42px 42px; opacity:0.25;
+    mask-image:radial-gradient(circle at 50% 0%, black 0%, transparent 65%);
+  }
+
+  .wrap{ position:relative; z-index:2; max-width:1140px; margin:0 auto; padding:0 32px; }
+
+  /* ---------- nav ---------- */
+  nav{ position:fixed; top:0; left:0; right:0; z-index:50; padding:34px 0 16px; background:linear-gradient(180deg, rgba(2,2,3,0.85) 0%, rgba(2,2,3,0.6) 70%, transparent 100%); }
+  nav .navbar{ display:flex; align-items:center; justify-content:space-between; }
+  .nav-mark{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:15px; letter-spacing:-0.01em; }
+  .nav-mark .dot{ color:var(--red); }
+  .nav-links{ display:flex; gap:10px; }
+  .nav-pill{
+    font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.04em;
+    padding:9px 18px; border-radius:999px; border:1px solid var(--line);
+    color:var(--muted); transition:all .25s ease;
+  }
+  .nav-pill:hover{ border-color:var(--red); color:var(--text); background:rgba(255,59,48,0.08); }
+  @media (max-width:700px){ .nav-links{ display:none; } }
+
+  /* ---------- vertical side label ---------- */
+  .side-label{
+    position:fixed; right:36px; top:50%; transform:translateY(-50%); z-index:40;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    font-family:'Space Grotesk', sans-serif; font-size:12px; font-weight:600; letter-spacing:0.15em;
+    color:var(--muted);
+  }
+  .side-label span{ writing-mode:vertical-rl; }
+  .side-label .pip{ width:6px; height:6px; border-radius:50%; background:var(--red); margin-bottom:14px; box-shadow:0 0 10px var(--red); }
+  @media (max-width:900px){ .side-label{ display:none; } }
+
+  /* ---------- hero ---------- */
+  .hero{ min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding-top:120px; position:relative; }
+
+  .hero-stage{
+    position:relative; border:1px solid var(--line); border-radius:4px; padding:60px 48px;
+    background:radial-gradient(circle at 30% 20%, rgba(255,59,48,0.06), transparent 60%);
+    overflow:hidden;
+  }
+  .stage-corner{ position:absolute; width:18px; height:18px; opacity:0.7; }
+  .stage-corner.tl{ top:14px; left:14px; border-top:1px solid var(--line-bright); border-left:1px solid var(--line-bright); }
+  .stage-corner.tr{ top:14px; right:14px; border-top:1px solid var(--line-bright); border-right:1px solid var(--line-bright); }
+  .stage-corner.bl{ bottom:14px; left:14px; border-bottom:1px solid var(--line-bright); border-left:1px solid var(--line-bright); }
+  .stage-corner.br{ bottom:14px; right:14px; border-bottom:1px solid var(--line-bright); border-right:1px solid var(--line-bright); }
+
+  .hero-tag{ font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--muted); letter-spacing:0.08em; margin-bottom:24px; display:flex; align-items:center; gap:10px; }
+  .hero-tag .pip{ width:6px; height:6px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); animation:blink 2s ease-in-out infinite; }
+
+  .glitch-wrap{ position:relative; }
+  .hero h1{
+    font-family:'Space Grotesk', sans-serif; font-weight:700;
+    font-size:clamp(48px, 9vw, 104px); line-height:0.98; letter-spacing:-0.02em;
+    position:relative;
+  }
+  .hero h1 .line2{ color:var(--red); }
+  .glitch-layer{
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    font-family:'Space Grotesk', sans-serif; font-weight:700;
+    font-size:clamp(48px, 9vw, 104px); line-height:0.98; letter-spacing:-0.02em;
+    opacity:0; pointer-events:none;
+  }
+  .glitch-layer.r{ color:var(--red); mix-blend-mode:screen; }
+  .glitch-layer.c{ color:var(--cyan); mix-blend-mode:screen; }
+  .glitching .glitch-layer{ animation:glitchShift 0.45s steps(2,end) 1; }
+  @keyframes glitchShift{
+    0%{ opacity:0; transform:translate(0,0); }
+    20%{ opacity:0.85; transform:translate(-4px,2px); }
+    40%{ opacity:0.7; transform:translate(3px,-2px); }
+    60%{ opacity:0.85; transform:translate(-2px,1px); }
+    80%{ opacity:0.4; transform:translate(2px,0); }
+    100%{ opacity:0; transform:translate(0,0); }
+  }
+
+  .hero .role{ margin-top:26px; font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--muted); max-width:520px; line-height:1.7; }
+  .hero .role b{ color:var(--text); font-weight:500; }
+
+  .hero-cta{ margin-top:38px; display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  .btn{
+    font-family:'JetBrains Mono', monospace; font-size:12.5px; letter-spacing:0.03em;
+    padding:14px 26px; border:1px solid var(--line-bright); color:var(--text);
+    display:inline-flex; align-items:center; gap:10px; position:relative;
+    transition:transform .25s ease, border-color .25s ease, background .25s ease;
+  }
+  .btn:hover{ transform:translateY(-2px); border-color:var(--red); }
+  .btn.primary{ background:var(--red); border-color:var(--red); color:#0A0A0A; font-weight:600; }
+  .btn.primary:hover{ box-shadow:0 10px 30px -8px rgba(255,59,48,0.55); transform:translateY(-2px); }
+  .btn .arrow{ transition:transform .25s ease; }
+  .btn:hover .arrow{ transform:translateX(3px); }
+
+  .joystick{
+    width:46px; height:74px; border:1px solid var(--line-bright); border-radius:999px;
+    display:flex; align-items:flex-start; justify-content:center; padding-top:8px;
+    margin-left:auto;
+  }
+  .joystick .nub{ width:28px; height:28px; border-radius:50%; background:var(--line-bright); animation:nubFloat 3s ease-in-out infinite; }
+  @keyframes nubFloat{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(30px); } }
+  @media (max-width:700px){ .joystick{ display:none; } }
+
+  section{ padding:90px 0; position:relative; }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:0.1em;
+    color:var(--muted); margin-bottom:16px; display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow .idx{ color:var(--red); }
+  .section-title{ font-family:'Space Grotesk', sans-serif; font-size:clamp(28px, 4.4vw, 44px); font-weight:600; letter-spacing:-0.01em; }
+
+  .reveal{ opacity:0; transform:translateY(36px); transition:opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+
+  /* ---------- panel cards (projects + experience) ---------- */
+  .panel-grid{ margin-top:50px; display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  @media (max-width:780px){ .panel-grid{ grid-template-columns:1fr; } }
+  .panel-grid.single{ grid-template-columns:1fr; }
+
+  .panel{
+    position:relative; border:1px solid var(--line); padding:28px; background:var(--panel);
+    transition:border-color .3s ease, transform .3s ease;
+    overflow:hidden;
+  }
+  .panel:hover{ border-color:var(--line-bright); transform:translateY(-4px); }
+  .panel-corner{ position:absolute; width:14px; height:14px; opacity:0; transition:opacity .3s ease; }
+  .panel-corner.tl{ top:8px; left:8px; border-top:1px solid var(--red); border-left:1px solid var(--red); }
+  .panel-corner.tr{ top:8px; right:8px; border-top:1px solid var(--red); border-right:1px solid var(--red); }
+  .panel-corner.bl{ bottom:8px; left:8px; border-bottom:1px solid var(--red); border-left:1px solid var(--red); }
+  .panel-corner.br{ bottom:8px; right:8px; border-bottom:1px solid var(--red); border-right:1px solid var(--red); }
+  .panel:hover .panel-corner{ opacity:1; }
+
+  .panel-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--muted); letter-spacing:0.05em; }
+  .panel-top .status{ color:var(--cyan); }
+
+  .panel h3{ font-family:'Space Grotesk', sans-serif; font-size:21px; font-weight:600; margin-bottom:10px; line-height:1.2; }
+  .panel .meta{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--muted); margin-bottom:14px; }
+  .panel p{ font-size:13.5px; color:#B4B6BC; line-height:1.65; margin-bottom:18px; }
+  .panel ul{ list-style:none; margin-bottom:18px; }
+  .panel ul li{ font-size:13px; color:#B4B6BC; line-height:1.6; margin-bottom:8px; padding-left:16px; position:relative; }
+  .panel ul li::before{ content:'›'; position:absolute; left:0; color:var(--red); }
+
+  .tags{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:20px; }
+  .tag{ font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--muted); border:1px solid var(--line); padding:4px 10px; }
+
+  .stat-row{ display:flex; gap:22px; margin-bottom:20px; flex-wrap:wrap; }
+  .stat{ font-family:'JetBrains Mono', monospace; }
+  .stat b{ display:block; font-size:20px; color:var(--cyan); font-weight:600; }
+  .stat span{ font-size:10px; color:var(--muted); letter-spacing:0.04em; }
+
+  .panel-cta{
+    display:inline-flex; align-items:center; gap:8px; font-family:'JetBrains Mono', monospace;
+    font-size:11.5px; letter-spacing:0.04em; padding:11px 18px; border:1px solid var(--line-bright);
+    transition:all .25s ease;
+  }
+  .panel-cta:hover{ background:var(--red); border-color:var(--red); color:#0A0A0A; }
+  .panel-links{ display:flex; gap:10px; flex-wrap:wrap; }
+
+  /* mini viz inside project panels */
+  .mini-viz{ height:64px; border:1px solid var(--line); margin-bottom:20px; position:relative; overflow:hidden; }
+  .mini-viz svg{ width:100%; height:100%; }
+
+  /* ---------- about ---------- */
+  .about-grid{ display:grid; grid-template-columns:1fr 1fr; gap:50px; margin-top:44px; align-items:start; }
+  @media (max-width:780px){ .about-grid{ grid-template-columns:1fr; gap:36px; } }
+  .about-text p{ font-size:15.5px; line-height:1.85; color:#C2C4C9; margin-bottom:16px; }
+  .about-text b{ color:var(--red); font-weight:600; }
+
+  .skill-block{ margin-bottom:22px; }
+  .skill-block .k{ font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--muted); letter-spacing:0.06em; margin-bottom:10px; display:block; }
+  .skill-tags{ display:flex; flex-wrap:wrap; gap:7px; }
+  .skill-tags .tag{ transition:all .2s ease; }
+  .skill-tags .tag:hover{ border-color:var(--red); color:var(--text); }
+
+  /* ---------- achievements strip ---------- */
+  .achv-strip{ margin-top:36px; display:flex; flex-direction:column; gap:0; border-top:1px solid var(--line); }
+  .achv-row{ display:flex; justify-content:space-between; align-items:baseline; padding:16px 0; border-bottom:1px solid var(--line); font-family:'JetBrains Mono', monospace; font-size:12.5px; gap:16px; }
+  .achv-row .label{ color:var(--text); font-size:13.5px; }
+  .achv-row .when{ color:var(--muted); white-space:nowrap; }
+
+  /* ---------- contact ---------- */
+  .contact{ text-align:center; }
+  .contact-panel{ border:1px solid var(--line); padding:70px 40px; position:relative; }
+  .contact-big{ font-family:'Space Grotesk', sans-serif; font-size:clamp(26px, 5.5vw, 48px); font-weight:700; letter-spacing:-0.01em; margin:18px 0 36px; word-break:break-word; }
+  .contact-big a{ border-bottom:2px solid transparent; transition:border-color .3s; }
+  .contact-big a:hover{ border-color:var(--red); }
+  .contact-links{ display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
+
+  footer{ padding:34px 0 50px; font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--muted); display:flex; justify-content:space-between; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+    .reveal{ opacity:1; transform:none; }
+    body{ cursor:auto; }
+    #crosshair{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="crosshair"><div class="ring"></div></div>
+<div class="grid-bg"></div>
+<div class="scanline"></div>
+
+<div class="hud-frame">
+  <div class="hud-corner tl"></div>
+  <div class="hud-corner tr"></div>
+  <div class="hud-corner bl"></div>
+  <div class="hud-corner br"></div>
+</div>
+
+<div class="telemetry">
+  <span><span class="dot"></span>STATUS: <b id="statusVal">ONLINE</b></span>
+  <span>ENGINE: <b>REACT/HTML5</b></span>
+  <span>FPS: <b id="fpsVal">60</b></span>
+</div>
+
+<div class="side-label">
+  <div class="pip"></div>
+  <span>VYSHNAVI.DEV</span>
+</div>
+
+<nav>
+  <div class="wrap">
+    <div class="navbar">
+      <div class="nav-mark">VYSHNAVI<span class="dot">.</span></div>
+      <div class="nav-links">
+        <a class="nav-pill" href="#work">WORK</a>
+        <a class="nav-pill" href="#experience">EXPERIENCE</a>
+        <a class="nav-pill" href="#about">ABOUT</a>
+        <a class="nav-pill" href="#contact">CONTACT</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-stage">
+      <div class="stage-corner tl"></div>
+      <div class="stage-corner tr"></div>
+      <div class="stage-corner bl"></div>
+      <div class="stage-corner br"></div>
+
+      <div class="hero-tag"><span class="pip"></span>PLAYER PROFILE // OPEN TO WORK</div>
+
+      <div class="glitch-wrap" id="glitchWrap">
+        <h1>
+          <span class="line1">VYSHNAVI</span><br>
+          <span class="line2">DEVI VADDI</span>
+        </h1>
+        <div class="glitch-layer r" id="glitchR">VYSHNAVI<br>DEVI VADDI</div>
+        <div class="glitch-layer c" id="glitchC">VYSHNAVI<br>DEVI VADDI</div>
+      </div>
+
+      <p class="role">Software Engineer · AI &amp; Data Science<br><b>Building distributed backend systems, ML pipelines, and real-time apps.</b> B.Tech AI&amp;DS, CGPA 8.9. Currently job-seeking.</p>
+
+      <div class="hero-cta">
+        <a class="btn primary" href="#work">ENTER WORK <span class="arrow">→</span></a>
+        <a class="btn" href="https://github.com/vyshnavidevi-123" target="_blank" rel="noopener">GITHUB</a>
+        <a class="btn" href="https://www.linkedin.com/in/vyshnavi-devi-vaddi/" target="_blank" rel="noopener">LINKEDIN</a>
+        <div class="joystick"><div class="nub"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="work">
+  <div class="wrap">
+    <div class="eyebrow reveal"><span class="idx">[ 01 ]</span> SELECTED WORK</div>
+    <h2 class="section-title reveal">Projects, loaded.</h2>
+
+    <div class="panel-grid">
+
+      <div class="panel reveal" data-tilt>
+        <div class="panel-corner tl"></div><div class="panel-corner tr"></div><div class="panel-corner bl"></div><div class="panel-corner br"></div>
+        <div class="panel-top"><span>INFRASTRUCTURE / ML</span><span class="status">● ACTIVE</span></div>
+        <h3>AI-Powered Scalable Monitoring Platform</h3>
+        <div class="meta">MAR 2025 — JUN 2026</div>
+        <div class="stat-row">
+          <div class="stat"><b>50K+</b><span>METRICS/HR</span></div>
+          <div class="stat"><b>94%</b><span>DETECTION ACC.</span></div>
+          <div class="stat"><b>-72%</b><span>QUERY LATENCY</span></div>
+        </div>
+        <div class="mini-viz">
+          <svg viewBox="0 0 300 64" preserveAspectRatio="none">
+            <polyline id="pulsePoly" points="0,48 30,42 60,44 90,20 120,34 150,14 180,30 210,8 240,26 270,18 300,10"
+              fill="none" stroke="#39E0FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <p>Distributed backend with 8 REST endpoints (FastAPI) ingesting metrics from 500 simulated nodes across 4 regions. Isolation Forest model auto-retrains every 5,000 samples, classifying server health in real time. Redis caching + Prometheus/Grafana observability.</p>
+        <div class="tags">
+          <span class="tag">FastAPI</span><span class="tag">scikit-learn</span><span class="tag">Redis</span><span class="tag">MySQL</span><span class="tag">Prometheus</span><span class="tag">Docker</span>
+        </div>
+        <div class="panel-links">
+          <a class="panel-cta" href="https://github.com/vyshnavidevi-123/AI-Powered-Server-Monitoring-Platform" target="_blank" rel="noopener">VIEW REPO →</a>
+        </div>
+      </div>
+
+      <div class="panel reveal" data-tilt>
+        <div class="panel-corner tl"></div><div class="panel-corner tr"></div><div class="panel-corner bl"></div><div class="panel-corner br"></div>
+        <div class="panel-top"><span>REALTIME / SOCIAL</span><span class="status">● LIVE</span></div>
+        <h3>Frenzyyy — Real-Time Multiplayer Party Game</h3>
+        <div class="meta">FEB 2026 — MAR 2026</div>
+        <div class="stat-row">
+          <div class="stat"><b>7</b><span>GAME MODES</span></div>
+          <div class="stat"><b>&lt;1s</b><span>SYNC LATENCY</span></div>
+          <div class="stat"><b>&lt;1.5s</b><span>PAGE LOAD</span></div>
+        </div>
+        <div class="mini-viz" style="display:flex; align-items:center; justify-content:center; gap:12px;">
+          <div class="chip" style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#FF3B30,#39E0FF);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;animation:nubFloat 2.6s ease-in-out infinite;">?</div>
+          <div class="chip" style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#39E0FF,#FF3B30);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;animation:nubFloat 3.2s ease-in-out infinite reverse;">!</div>
+          <div class="chip" style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#FF3B30,#39E0FF);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;animation:nubFloat 2.9s ease-in-out infinite;">★</div>
+        </div>
+        <p>Real-time multiplayer web app using Firebase Firestore <code>onSnapshot</code> listeners to sync game state across all players. Custom heartbeat presence system for online/offline detection. React 18 + Vite, deployed to Vercel with CI/CD.</p>
+        <div class="tags">
+          <span class="tag">React 18</span><span class="tag">Firebase</span><span class="tag">Vite</span><span class="tag">Vercel</span>
+        </div>
+        <div class="panel-links">
+          <a class="panel-cta" href="https://frenzyyy.vercel.app" target="_blank" rel="noopener">PLAY LIVE →</a>
+          <a class="panel-cta" href="https://github.com/vyshnavidevi-123/Frenzyyy" target="_blank" rel="noopener">REPO</a>
+        </div>
+      </div>
+
+      <div class="panel reveal" data-tilt>
+        <div class="panel-corner tl"></div><div class="panel-corner tr"></div><div class="panel-corner bl"></div><div class="panel-corner br"></div>
+        <div class="panel-top"><span>DATA / ANALYTICS</span><span class="status">● STABLE</span></div>
+        <h3>Business Analytics Tracker</h3>
+        <div class="meta">JAN 2026 — FEB 2026</div>
+        <div class="stat-row">
+          <div class="stat"><b>98.7%</b><span>CALC ACCURACY</span></div>
+          <div class="stat"><b>4</b><span>VIZ TYPES</span></div>
+        </div>
+        <p>Analytics engine using Pandas/NumPy to automate sales, expense, and profit-margin calculations across structured datasets. ETL modules generate automated monthly reports; Matplotlib/Seaborn visualizations surface growth drivers and expense distribution.</p>
+        <div class="tags">
+          <span class="tag">Python</span><span class="tag">Pandas</span><span class="tag">NumPy</span><span class="tag">Matplotlib</span><span class="tag">Seaborn</span>
+        </div>
+        <div class="panel-links">
+          <a class="panel-cta" href="https://github.com/vyshnavidevi-123/vehiclesdataset" target="_blank" rel="noopener">VIEW REPO →</a>
+        </div>
+      </div>
+
+      <div class="panel reveal" data-tilt>
+        <div class="panel-corner tl"></div><div class="panel-corner tr"></div><div class="panel-corner bl"></div><div class="panel-corner br"></div>
+        <div class="panel-top"><span>AI / EDUCATION</span><span class="status">● STABLE</span></div>
+        <h3>Student Unified Academic Hub</h3>
+        <div class="meta">AI-POWERED ACADEMIC ASSISTANT</div>
+        <p>AI-powered student academic assistant — unifying academic tools and insights into a single platform.</p>
+        <div class="tags">
+          <span class="tag">Python</span><span class="tag">AI</span>
+        </div>
+        <div class="panel-links">
+          <a class="panel-cta" href="https://github.com/vyshnavidevi-123/student-unified-academic-hub" target="_blank" rel="noopener">VIEW REPO →</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="experience">
+  <div class="wrap">
+    <div class="eyebrow reveal"><span class="idx">[ 02 ]</span> EXPERIENCE</div>
+    <h2 class="section-title reveal">Levels cleared.</h2>
+
+    <div class="panel-grid">
+
+      <div class="panel reveal" data-tilt>
+        <div class="panel-corner tl"></div><div class="panel-corner tr"></div><div class="panel-corner bl"></div><div class="panel-corner br"></div>
+        <div class="panel-top"><span>INTERNSHIP</span><span class="status">● COMPLETE</span></div>
+        <h3>Data Science Intern — Altair</h3>
+        <div class="meta">OCT 2025 — DEC 2025</div>
+        <div class="stat-row">
+          <div class="stat"><b>5+</b><span>DASHBOARDS SHIPPED</span></div>
+          <div class="stat"><b>-40%</b><span>MANUAL PROCESSING</span></div>
+          <div class="stat"><b>+40%</b><span>SYNTHESIS EFFICIENCY</span></div>
+        </div>
+        <ul>
+          <li>Built 5+ data-driven apps and interactive dashboards in Python/Pandas, focused on modular, reusable code.</li>
+          <li>Automated ETL systems for large-scale business datasets across cross-functional engineering teams.</li>
+          <li>Designed Power BI / Tableau reporting tools, communicating findings to stakeholders.</li>
+        </ul>
+      </div>
+
+      <div class="panel reveal" data-tilt>
+        <div class="panel-corner tl"></div><div class="panel-corner tr"></div><div class="panel-corner bl"></div><div class="panel-corner br"></div>
+        <div class="panel-top"><span>CERTIFICATION</span><span class="status">● GRADE: O</span></div>
+        <h3>AI-ML Virtual Intern — AICTE · EduSkill</h3>
+        <div class="meta">APR 2025 — JUN 2025</div>
+        <ul>
+          <li>AWS Academy certified in Cloud and ML Foundations over a 10-week program.</li>
+          <li>Attained Grade-O (Outstanding) automating Python/TensorFlow ingestion and validation workflows.</li>
+        </ul>
+      </div>
+
+      <div class="panel reveal" data-tilt>
+        <div class="panel-corner tl"></div><div class="panel-corner tr"></div><div class="panel-corner bl"></div><div class="panel-corner br"></div>
+        <div class="panel-top"><span>CERTIFICATION</span><span class="status">● COMPLETE</span></div>
+        <h3>Artificial Intelligence Intern — SkillDzire</h3>
+        <div class="meta">MAY 2025 — JUN 2025</div>
+        <ul>
+          <li>Integrated 5+ data-driven modules for scalable retrieval and high-integrity processing.</li>
+          <li>Synced backend AI logic with front-end tools for real-time technical insights.</li>
+        </ul>
+      </div>
+
+      <div class="panel reveal" data-tilt>
+        <div class="panel-corner tl"></div><div class="panel-corner tr"></div><div class="panel-corner bl"></div><div class="panel-corner br"></div>
+        <div class="panel-top"><span>ACHIEVEMENTS</span><span class="status">● UNLOCKED</span></div>
+        <h3>Hackathons &amp; Competitions</h3>
+        <div class="achv-strip" style="margin-top:8px;">
+          <div class="achv-row"><span class="label">🏆 1st Place — TechXplore Hackathon (Team Lead)</span><span class="when">AUG 2025</span></div>
+          <div class="achv-row" style="border-bottom:none;"><span class="label">🚀 Finalist — SparkTank E-Cell (200+ teams)</span><span class="when">OCT 2025</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="about">
+  <div class="wrap">
+    <div class="eyebrow reveal"><span class="idx">[ 03 ]</span> ABOUT / LOADOUT</div>
+    <h2 class="section-title reveal" style="margin-bottom:36px;">Systems and stories.</h2>
+
+    <div class="about-grid">
+      <div class="about-text reveal">
+        <p>AI &amp; Data Science student at <b>Vishnu Institute of Technology</b> (CGPA 8.9), building ML pipelines, distributed backends, and real-time apps.</p>
+        <p>I like problems with two halves — one that needs to <b>hold up under load</b>, one that needs to feel <b>good to use</b>. A monitoring platform for 500 fake servers and a party game for real friends live in the same GitHub for a reason.</p>
+        <p>Currently a student. Actively job-seeking.</p>
+      </div>
+
+      <div class="reveal">
+        <div class="skill-block">
+          <span class="k">LANGUAGES</span>
+          <div class="skill-tags"><span class="tag">Python</span><span class="tag">Java</span><span class="tag">SQL</span><span class="tag">JavaScript</span><span class="tag">C</span></div>
+        </div>
+        <div class="skill-block">
+          <span class="k">WEB / FRAMEWORKS</span>
+          <div class="skill-tags"><span class="tag">React 18</span><span class="tag">Vite</span><span class="tag">FastAPI</span><span class="tag">TensorFlow</span><span class="tag">scikit-learn</span></div>
+        </div>
+        <div class="skill-block">
+          <span class="k">DATA / CLOUD</span>
+          <div class="skill-tags"><span class="tag">MySQL</span><span class="tag">MongoDB</span><span class="tag">Firebase</span><span class="tag">AWS</span><span class="tag">GCP</span><span class="tag">Docker</span></div>
+        </div>
+        <div class="skill-block">
+          <span class="k">OBSERVABILITY</span>
+          <div class="skill-tags"><span class="tag">Prometheus</span><span class="tag">Grafana</span><span class="tag">Redis</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="contact" class="contact">
+  <div class="wrap">
+    <div class="eyebrow reveal" style="justify-content:center;"><span class="idx">[ 04 ]</span> CONNECT</div>
+    <div class="contact-panel reveal">
+      <div class="contact-big"><a href="mailto:vaddivyshnavidevi@gmail.com">vaddivyshnavidevi@gmail.com</a></div>
+      <div class="contact-links">
+        <a class="btn primary" href="https://github.com/vyshnavidevi-123" target="_blank" rel="noopener">GITHUB →</a>
+        <a class="btn" href="https://www.linkedin.com/in/vyshnavi-devi-vaddi/" target="_blank" rel="noopener">LINKEDIN →</a>
+        <a class="btn" href="https://frenzyyy.vercel.app" target="_blank" rel="noopener">PLAY FRENZYYY →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap" style="display:flex; justify-content:space-between; width:100%;">
+    <span>© 2026 VYSHNAVI DEVI VADDI</span>
+    <span>SESSION: BUILD_2026.06</span>
+  </div>
+</footer>
+
+<script>
+// crosshair follow
+const crosshair = document.getElementById('crosshair');
+window.addEventListener('mousemove', (e) => {
+  crosshair.style.left = e.clientX + 'px';
+  crosshair.style.top = e.clientY + 'px';
+});
+document.querySelectorAll('a, button, [data-tilt]').forEach(el => {
+  el.addEventListener('mouseenter', () => crosshair.classList.add('active'));
+  el.addEventListener('mouseleave', () => crosshair.classList.remove('active'));
+});
+
+// glitch text effect, periodic
+const glitchWrap = document.getElementById('glitchWrap');
+function triggerGlitch(){
+  glitchWrap.classList.remove('glitching');
+  void glitchWrap.offsetWidth;
+  glitchWrap.classList.add('glitching');
+}
+window.addEventListener('load', () => {
+  setTimeout(triggerGlitch, 300);
+});
+setInterval(triggerGlitch, 6000);
+
+// fake telemetry FPS flicker
+const fpsVal = document.getElementById('fpsVal');
+setInterval(() => {
+  const v = 58 + Math.floor(Math.random()*4);
+  fpsVal.textContent = v;
+}, 1400);
+
+// scroll reveal
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      entry.target.classList.add('in');
+      io.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+// animated sparkline
+const poly = document.getElementById('pulsePoly');
+if(poly){
+  const basePoints = poly.getAttribute('points').split(' ').map(p=>p.split(',').map(Number));
+  let t = 0;
+  function animatePulse(){
+    t += 0.035;
+    const newPoints = basePoints.map(([x,y], i) => [x, y + Math.sin(t + i*0.55) * 3]);
+    poly.setAttribute('points', newPoints.map(p=>p.join(',')).join(' '));
+    requestAnimationFrame(animatePulse);
+  }
+  animatePulse();
+}
+
+// panel tilt
+document.querySelectorAll('[data-tilt]').forEach(card => {
+  card.addEventListener('mousemove', (e) => {
+    const r = card.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    const rotX = ((y / r.height) - 0.5) * -4;
+    const rotY = ((x / r.width) - 0.5) * 4;
+    card.style.transform = `translateY(-4px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+  });
+  card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+});
+</script>
+
+</body>
+</html>
