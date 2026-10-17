@@ -120,7 +120,7 @@ Python-powered analytics platform for automated business reporting, visualizatio
 
 An AI-powered platform designed to centralize academic tools, resources, and intelligent assistance for students.
 
----
+
 
 ## Skills
 
